@@ -444,6 +444,8 @@ static int __devexit samsung_asoc_platform_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static struct platform_device *asoc_dma_device;
+
 static struct platform_driver asoc_dma_driver = {
 	.driver = {
 		.name = "samsung-audio",
@@ -454,7 +456,34 @@ static struct platform_driver asoc_dma_driver = {
 	.remove = __devexit_p(samsung_asoc_platform_remove),
 };
 
-module_platform_driver(asoc_dma_driver);
+static int __init asoc_dma_init(void)
+{
+	int ret;
+
+	ret = platform_driver_register(&asoc_dma_driver);
+	if (ret) {
+		pr_err("unable to register driver\n");
+		return ret;
+	}
+
+	asoc_dma_device = platform_device_register_simple("samsung-audio",
+							 -1, NULL, 0);
+	if (IS_ERR(asoc_dma_device)) {
+		platform_driver_unregister(&asoc_dma_driver);
+		return PTR_ERR(asoc_dma_device);
+	}
+
+	return 0;
+}
+
+static void __exit asoc_dma_exit(void)
+{
+	platform_device_unregister(asoc_dma_device);
+	platform_driver_unregister(&asoc_dma_driver);
+}
+
+module_init(asoc_dma_init);
+module_exit(asoc_dma_exit);
 
 MODULE_AUTHOR("Ben Dooks, <ben@simtec.co.uk>");
 MODULE_DESCRIPTION("Samsung ASoC DMA Driver");
